@@ -1,105 +1,73 @@
-// This project launches a laser for your cat to play with it 
+//NOTE : Digital pins #2, #13 and analog pins A0-A5 are not used by the shield.
+// SUr MOsfet GDS : quand specs lisibles, dans l'ordre gate (pin commande) drain (+) source (gnd)
 
 #include <Servo.h>
 
-
-#define UPDATE_TIME 5
-#define MAX_POS 160
-#define MIN_POS 20
-#define ServoPin 5
-#define LaserPin 4      //IMPORTANT : les ports ne délivrent pas assez de puissance pour alimenter le laser, il faut passer par un transistor ype 2N 3904
+#define UPDATE_TIME 10
+#define MAX_POS 60 //Angle maximal servo
+#define MIN_POS 20 //Angle minimal servo
+#define SensorPin 15 // A1 = GPIO15 sur arduino Uno
+#define ServoPin 10   //Ser01 sur shield
+#define LaserPin 17      // A2 = GPIO16 IMPORTANT : les ports ne délivrent pas assez de puissance pour alimenter le laser, il faut passer par un transistor ype 2N 3904 (note Q)
 
 Servo myServo;
+int pos = MIN_POS; //Angle servo
+long randNumber1 = MIN_POS;
+long randNumber2 = MAX_POS;
+int varSpeed = UPDATE_TIME/3;
 
-int pos = MIN_POS;
-int jeuActif = 0;
-const int nbCycles = 4;
-
-// set up the 'digital' feed
-AdafruitIO_Feed *digital = io.feed("digital");
+const int nbCycles = 10;
 
 void setup() {
-
-  //pinMode(LED_PIN, OUTPUT);
-
-  // start the serial connection
-  Serial.begin(115200);
-
-  // wait for serial monitor to open
-  while (! Serial);
-
-  // connect to io.adafruit.com
-  Serial.print("Connecting to Adafruit IO");
-  io.connect();
-
-  // set up a message handler for the 'digital' feed.
-  // the handleMessage function (defined below)
-  // will be called whenever a message is
-  // received from adafruit io.
-  digital->onMessage(handleMessage);
-
-  // wait for a connection
-  while (io.status() < AIO_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-  }
-
-  // we are connected
-  Serial.println();
-  Serial.println(io.statusText());
-
+  
+  pinMode(LaserPin, OUTPUT);
+  Serial.begin(9600);           // set up Serial library at 9600 bps
+  Serial.println("Motor test!");
   myServo.attach(ServoPin);
   myServo.write(pos);
-  Serial.println("Moteur ok");
-  
-  digital->get();
-
-
-
 }
 
 void loop() {
-
-  // io.run(); is required for all sketches.
-  // it should always be present at the top of your loop
-  // function. it keeps the client connected to
-  // io.adafruit.com, and processes any incoming data.
-  io.run();
-  // A partir de la impro totale
-  //Serial.println(toInt(Malifaux->toPinLevel()));
-  //delay(1000);
-  if (jeuActif)
+  // put your main code here, to run repeatedly:
+  if (digitalRead(SensorPin) == HIGH) {
     jeu();
-}
-
-// this function is called whenever an 'digital' feed message
-// is received from Adafruit IO. it was attached to
-// the 'digital' feed in the setup() function above.
-void handleMessage(AdafruitIO_Data *data) {
-
-  Serial.print("received <- ");
-
-  if (data->toPinLevel() == HIGH) {
-    Serial.println("HIGH");
-    jeuActif = 1;
   }
-  else {
-    Serial.println("LOW");
-    jeuActif = 0;
+  if (digitalRead(SensorPin) == LOW) {
+    Serial.println("pas de mouvement detecte");
+    //motor.run(RELEASE);
+
   }
-  //digitalWrite(LED_PIN, data->toPinLevel());
+  delay(1000);
 }
 
 void jeu() {
   digitalWrite(LaserPin, HIGH);
   for (int i = 0; i < nbCycles ; i += 1) {
-    for (pos = MIN_POS; pos <= MAX_POS; pos += 1) {
+    randNumber1 = random(MIN_POS , MAX_POS - 10);
+    randNumber2 = random(randNumber1 , MAX_POS);
+    for (pos = MIN_POS; pos <= randNumber2; pos += 1) {
       myServo.write(pos);
-      delay(UPDATE_TIME);
+      delay(UPDATE_TIME+random(-varSpeed,varSpeed));
     }
-    for (pos = MAX_POS; pos >= MIN_POS; pos -= 1) {
+    for (pos = randNumber2; pos >= randNumber1; pos -= 1) {
       myServo.write(pos);
-      delay(UPDATE_TIME);
+      delay(UPDATE_TIME+random(-varSpeed,varSpeed));
+    }
+    for (pos = randNumber1; pos <= MAX_POS; pos += 1) {
+      myServo.write(pos);
+      delay(UPDATE_TIME+random(-varSpeed,varSpeed));
+    }
+    for (pos = MAX_POS; pos >= randNumber1; pos -= 1) {
+      myServo.write(pos);
+      delay(UPDATE_TIME+random(-varSpeed,varSpeed));
+    }
+    for (pos = randNumber1; pos <= randNumber2; pos += 1) {
+      myServo.write(pos);
+      delay(UPDATE_TIME+random(-varSpeed,varSpeed));
+    }
+    for (pos = randNumber2; pos >= MIN_POS; pos -= 1) {
+      myServo.write(pos);
+      delay(UPDATE_TIME+random(-varSpeed,varSpeed));
     }
   }
   digitalWrite(LaserPin, LOW);
